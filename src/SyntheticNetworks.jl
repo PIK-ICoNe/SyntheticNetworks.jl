@@ -1,6 +1,10 @@
 __precompile__(false)
 module SyntheticNetworks
 
+using Random
+using LightGraphs
+using SpatialIndexing
+
 export greet
 
 """
