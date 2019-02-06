@@ -4,8 +4,6 @@ push!(LOAD_PATH,"$dir/../src/")
 using Documenter
 using SyntheticNetworks
 
-greet()
-
 makedocs(
     sitename = "SyntheticNetworks",
     format = Documenter.HTML(),
