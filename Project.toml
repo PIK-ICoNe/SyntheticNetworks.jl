@@ -1,0 +1,10 @@
+name = "SyntheticNetworks"
+uuid = "9c1af47c-29f5-11e9-0b47-9f5334384f20"
+authors = ["Paul Schultz <pschultz@pik-potsdam.de>"]
+version = "0.1.0"
+
+[deps]
+LightGraphs = "093fc24a-ae57-5d10-9952-331d41423f4d"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SpatialIndexing = "d4ead438-fe20-5cc5-a293-4fd39a41b74c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
