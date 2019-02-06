@@ -38,7 +38,7 @@ export SyntheticNetwork
 """
     RandomPowerGrid(num_layers, n, n0, p, q, r, s, u, sampling, α, β, γ, debug)
 """
-struct RandomPowerGrid <: SyntheticNetwork
+@with_kw mutable struct RandomPowerGrid <: SyntheticNetwork
     # model parameters
     num_layers::Int
     n::AbstractArray{Int}
