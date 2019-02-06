@@ -4,10 +4,13 @@ push!(LOAD_PATH,"$dir/../src/")
 using Documenter
 using SyntheticNetworks
 
+greet()
+
 makedocs(
     sitename = "SyntheticNetworks",
     format = Documenter.HTML(),
     modules = [SyntheticNetworks])
+
 
 # Documenter can also automatically deploy documentation to gh-pages.
 # See "Hosting Documentation" and deploydocs() in the Documenter manual
