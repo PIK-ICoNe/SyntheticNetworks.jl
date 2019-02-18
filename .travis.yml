@@ -1,10 +1,29 @@
-jobs:
-  include:
-    - stage: "Documentation"
-      julia: 1.0
-      os: linux
-      script:
-        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));
-                                               Pkg.instantiate()'
-        - julia --project=docs/ docs/make.jl
-      after_success: skip
+## Documentation: http://docs.travis-ci.com/user/languages/julia/
+language: julia
+os:
+  - linux
+  # - osx
+julia:
+  - 1.0
+  - 1.1
+notifications:
+  email: false
+git:
+  depth: 99999999
+env:
+  global:
+    # - JULIA_COVERAGE_VERSION='1.1'
+    - PYTHON=conda
+    - RED='\033[0;31m'
+    - GREEN='\033[0;32m'
+    - NOCOLOR='\033[0m'
+    - BOLD=$(tput bold)
+
+script:
+  - julia --check-bounds=yes --color=yes --inline=no -e "using Pkg; Pkg.test(coverage=true)"
+    && julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; res=Codecov.process_folder();
+          Codecov.submit(res);
+          covered_lines, total_lines =  get_summary(res); println("covered_lines/total_lines = $covered_lines/$total_lines = $(covered_lines/total_lines)");'
+  - julia -e 'using Pkg; Pkg.add(PackageSpec(name="Documenter", version="0.19"))'
+    && julia docs/make.jl
+
