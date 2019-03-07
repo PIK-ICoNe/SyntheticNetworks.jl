@@ -1,9 +1,11 @@
 __precompile__(false)
+
 module SyntheticNetworks
 
 using Random
 using Parameters
 using LightGraphs
+using MetaGraphs
 using SpatialIndexing
 
 """
@@ -59,6 +61,7 @@ export SyntheticNetwork
     lon::AbstractArray{Float32}
     lat::AbstractArray{Float32}
     lev::AbstractArray{Float32}
+
     density::AbstractArray{Float32}
     # internal counters
     added_nodes::AbstractArray{Int}
@@ -73,6 +76,28 @@ export SyntheticNetwork
     cumrtree::AbstractArray
 end
 export RandomPowerGrid
+function _rand_uniform()
+    2*(0.5-rand())
+end
 
+struct Grid_Growth_Parameters
+    n0::Int
+end
+
+function initialise(grid_pars)
+    n0 = grid_pars.n0
+    positions = [[_rand_uniform(), _rand_uniform()] for i=1:n0 ]
+    graph = EG.EmbeddedGraph(SimpleGraph(n0), positions, EG.distance)
+    mst_graph = EG.EmbeddedGraph(CompleteGraph(n0), positions, EG.distance)
+
+    for i in kruskal_mst(mst_graph)
+        add_edge!(graph,i)
+    end
+    graph
+end
+
+function _rand_uniform()
+    2*(0.5-rand())
+end
 
 end # module
