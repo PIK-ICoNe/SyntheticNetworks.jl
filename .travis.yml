@@ -1,0 +1,30 @@
+## Documentation: http://docs.travis-ci.com/user/languages/julia/
+language: julia
+os:
+  - linux
+  # - osx
+julia:
+  - nightly
+  - 1.0
+  - 1.1
+notifications:
+  email: false
+git:
+  depth: 99999999
+env:
+  global:
+    # - JULIA_COVERAGE_VERSION='1.1'
+    - PYTHON=conda
+    - RED='\033[0;31m'
+    - GREEN='\033[0;32m'
+    - NOCOLOR='\033[0m'
+    - BOLD=$(tput bold)
+
+script:
+  - julia --check-bounds=yes --color=yes --inline=no -e "using Pkg; Pkg.test(coverage=true)"
+    && julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; res=Codecov.process_folder();
+          Codecov.submit(res);
+          covered_lines, total_lines =  get_summary(res); println("covered_lines/total_lines = $covered_lines/$total_lines = $(covered_lines/total_lines)");'
+  - julia -e 'using Pkg; Pkg.add(PackageSpec(name="Documenter", version="0.2"))'
+    && julia docs/make.jl
+
