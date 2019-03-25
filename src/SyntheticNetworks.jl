@@ -7,78 +7,63 @@ using Parameters
 using LightGraphs
 # using SpatialIndexing
 using EmbeddedGraphs
-"""
-    greet()
+using Distances
 
-A function.
-Here's some inline maths: ``\\sqrt[n]{1 + x + x^2 + \\ldots}``.
-
-Here's an equation:
-
-``\\frac{n!}{k!(n - k)!} = \\binom{n}{k}``
-
-```jldoctest
-a = 1
-b = 2
-a + b
-
-# output
-
-3
-```
-"""
-greet() = println("Hello World!")
-export greet
 
 """
     SyntheticNetwork
 """
+
+"""[1] equation
+        f(i,j,G) = (d_G(i,j) + 1) ^ r / (dist_spatial(x_i,x_j))
+"""
 abstract type SyntheticNetwork end
-export SyntheticNetwork, Grid_Growth_Parameters, initialise, generate_graph, f
+export SyntheticNetwork, RandomPowerGrid, initialise, generate_graph, f
 
 """
     RandomPowerGrid(num_layers, n, n0, p, q, r, s, u, sampling, α, β, γ, debug)
 """
-@with_kw mutable struct RandomPowerGrid <: SyntheticNetwork
-    # model parameters
-    num_layers::Int
-    n::AbstractArray{Int}
-    n0::AbstractArray{Int}
-    p::AbstractArray{Float32}
-    q::AbstractArray{Float32}
-    r::AbstractArray{Float32}
-    s::AbstractArray{Float32}
-    u::AbstractArray{Float32}
-    # sampling method
-    sampling::String
-    α::Float32
-    β::Float32
-    γ::Float32
-    # debug flag
-    debug::Bool
-    # node information (output)
-    lon::AbstractArray{Float32}
-    lat::AbstractArray{Float32}
-    lev::AbstractArray{Float32}
+#
+# @with_kw mutable struct RandomPowerGrid <: SyntheticNetwork
+#     # model parameters
+#     num_layers::Int
+#     n::AbstractArray{Int}
+#     n0::AbstractArray{Int}
+#     p::AbstractArray{Float32}
+#     q::AbstractArray{Float32}
+#     r::AbstractArray{Float32}
+#     s::AbstractArray{Float32}
+#     u::AbstractArray{Float32}
+#     # sampling method
+#     sampling::String
+#     α::Float32
+#     β::Float32
+#     γ::Float32
+#     # debug flag
+#     debug::Bool
+#     # node information (output)
+#     lon::AbstractArray{Float32}
+#     lat::AbstractArray{Float32}
+#     lev::AbstractArray{Float32}
+#
+#     density::AbstractArray{Float32}
+#     # internal counters
+#     added_nodes::AbstractArray{Int}
+#     added_edges::AbstractArray{Int}
+#     n_offset::Int
+#     levnodes::AbstractArray{Int}
+#     cumnodes::AbstractArray{Int}
+#     # internal data structures
+#     levgraphs::AbstractArray
+#     cumgraphs::AbstractArray
+#     levrtree::AbstractArray
+#     cumrtree::AbstractArray
+# end
+# export RandomPowerGrid
+#
 
-    density::AbstractArray{Float32}
-    # internal counters
-    added_nodes::AbstractArray{Int}
-    added_edges::AbstractArray{Int}
-    n_offset::Int
-    levnodes::AbstractArray{Int}
-    cumnodes::AbstractArray{Int}
-    # internal data structures
-    levgraphs::AbstractArray
-    cumgraphs::AbstractArray
-    levrtree::AbstractArray
-    cumrtree::AbstractArray
-end
-export RandomPowerGrid
 
-
-
-struct Grid_Growth_Parameters
+struct RandomPowerGrid
     n::Int
     n0::Int
     p::Float32
@@ -88,76 +73,112 @@ struct Grid_Growth_Parameters
     u::Float32
 end
 
-Grid_Growth_Parameters(n, n0, args...) = Grid_Growth_Parameters(n0, zeros(5)...)
+RandomPowerGrid(n, n0) = RandomPowerGrid(n, n0, rand(5)...)
 
-function generate_graph(gp)
-    n = gp.n
-    n0 = gp.n0
-    p = gp.p
-    q = gp.q
-    r = gp.r
-    s = gp.s
-    u = gp.u
-    g = initialise(n0, p, q, r, s, u)
-    grow!(g, n, n0, p, q, r, s, u)
-    g
+function generate_graph(RPG)
+    # (n, n0, p, q, r, s, u) = (RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.s)
+    eg = initialise(RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u)
+    grow!(eg, RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u)
+    eg
 end
 
-function grow!(g::EmbeddedGraph, n::Int, n0::Int, p, q, r, s, u; vertex_density_prob=_rand_uniform)
-    for dummy in n0+1:n
+function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real;
+                    vertex_density_prob::Function=rand_uniform_2D)
+    # STEP I1
+    """If the locations x_1...x_N are not given, draw them independently at
+        random from ρ."""
+    positions = [vertex_density_prob(i) for i=1:n0 ]
+    graph = EmbeddedGraph(SimpleGraph(n0), positions)
+
+    # STEP I2
+    """Initialize G to be a minimum spanning tree (MST) for x_1...x_N w.r.t.
+        the distance function dist_spatial(x, y) (using Kruskal’s simple or
+        Prim’s more efficient algorithm). """
+    mst_graph = EmbeddedGraph(CompleteGraph(n0), positions)
+    edges = prim_mst(mst_graph, weights(mst_graph, dense=true))
+    for edge in edges
+        add_edge!(graph, edge)
+    end
+
+    # STEP I3
+    """With probability q, draw a node i ∈ {1,...,N} uniformly at
+        random, find that node l ∈ {1,...,N} which is not yet linked to i and
+        for which f (i,l,G) is maximal, and add the link i–l to G."""
+    m = Int(round(n0*(1-s)*(p+q), RoundDown))
+    for dummy in 1:m
+        i = rand(1:nv(graph))
+        dist_spatial = map(j -> euclidean(graph.vertexpos[i],
+            graph.vertexpos[j]), 1:nv(graph))
+        l_edge = Step_G34(graph, nv(graph), dist_spatial, r)
+        add_edge!(graph, l_edge, i)
+    end
+
+    #"""In the new code the logic has changed and this step is equal to step G4.
+    #    Put m = ⌊N_0⋅(1−s)⋅(p+q)⌋. For each a = 1...m, add a link to G as
+    #    follows: Find that yet unlinked pair of distinct nodes i,j ∈ {1,...,N_0}
+    #    for which f(i,j,G) [eqn. 1] is maximal, and add the link i–j to G."""
+    # Step_I3!(graph, r, m) # OLD LOGIC
+
+    graph
+end
+
+function grow!(graph::EmbeddedGraph, n::Int, n0::Int, p, q, r, s, u; vertex_density_prob::Function=rand_uniform_2D)
+    for n_actual in n0+1:n
+        # STEP G0
+        """With probabilities 1−s and s, perform either steps G1–G4 or step
+        G5, respectively."""
         if rand() >= s
             # STEP G1
-            pos = [vertex_density_prob(), vertex_density_prob()]
-            add_vertex!(g, pos)
+            """If x i is not given, draw it at random from ρ."""
+            pos = vertex_density_prob(n_actual)
+            add_vertex!(graph, pos)
 
             # STEP G2
-            d_spatial_i = map(i -> distance(g.vertexpos[nv(g)], g.vertexpos[i]), 1:nv(g))
-            d_spatial_i[nv(g)] = 100 #Inf
-            min_dist_vertex = argmin(d_spatial_i)
-            add_edge!(g, min_dist_vertex, nv(g))
+            """ Find that node j ∈ {1,...,N} for which dist_spatial(x_i,x_j) is
+                minimal and add the link i–j to G."""
+            dist_spatial = map(i -> euclidean(graph.vertexpos[nv(graph)], graph.vertexpos[i]), 1:nv(graph))
+            dist_spatial[nv(graph)] = 100. #Inf
+            min_dist_vertex = argmin(dist_spatial)
+            add_edge!(graph, min_dist_vertex, nv(graph))
 
             # STEP G3
+            """ With probability p, find that node l ∈ {1,...,N} ⍀ {j} for
+                which f(i,l,G) is maximal, and add the link i–l to G."""
             if rand() <= p
-                l_edge = _G34(g, nv(g), d_spatial_i, r)
-                add_edge!(g, l_edge, nv(g))
+                l_edge = Step_G34(graph, nv(graph), dist_spatial, r)
+                add_edge!(graph, l_edge, nv(graph))
             end
             # STEP G4
+            """ With probability q, draw a node i' ∈ {1,...,N} uniformly at
+                random, find that node l' ∈ {1,...,N} which is not yet linked to
+                i' and for which f(i',l',G) is maximal, and add the link i'–l'
+                to G."""
             if rand() <= q
-                i = rand(1:nv(g))
-                d_spatial_i = map(j -> distance(g.vertexpos[i], g.vertexpos[j]), 1:nv(g))
-                l_edge = _G34(g, nv(g), d_spatial_i, r)
-                add_edge!(g, l_edge, i)
+                i = rand(1:nv(graph))
+                dist_spatial = map(j -> euclidean(graph.vertexpos[i], graph.vertexpos[j]), 1:nv(graph))
+                l_edge = Step_G34(graph, nv(graph), dist_spatial, r)
+                add_edge!(graph, l_edge, i)
             end
 
         else
             # STEP G5
-            edge = rand(edges(g))
-            newpos = (g.vertexpos[src(edge)] + g.vertexpos[dst(edge)]) / 2.
-            add_vertex!(g, newpos)
-            add_edge!(g, src(edge), nv(g))
-            add_edge!(g, dst(edge), nv(g))
-            rem_edge!(g, edge)
+            """ Select an existing link a–b uniformly at random, let
+                x_i = (x_a + x_b)/2, remove the link a–b, and add two links i–a
+                and i–b.
+                New logic splits the nodes somewhere, not in the middle."""
+            edge = rand(edges(graph))
+            splitval = rand()
+            newpos = (graph.vertexpos[src(edge)] * splitval + graph.vertexpos[dst(edge)] * (1-splitval))
+            add_vertex!(graph, newpos)
+            add_edge!(graph, src(edge), nv(graph))
+            add_edge!(graph, dst(edge), nv(graph))
+            rem_edge!(graph, edge)
         end
     end
 end
 
-function initialise(n0::Int, p, q, r, s, u; vertex_density_prob=_rand_uniform)
-    # STEP I1
-    positions = [[vertex_density_prob(), vertex_density_prob()] for i=1:n0 ]
-    graph = EmbeddedGraph(SimpleGraph(n0), positions)
-    # STEP I2
-    mst_graph = EmbeddedGraph(CompleteGraph(n0), positions)
-    edges = prim_mst(mst_graph, weights(mst_graph, dense=true))
-    for i in edges
-        add_edge!(graph,i)
-    end
-    # STEP I3
-    m = Int(round(n0*(1-s)*(p+q), RoundDown))
-    _I3!(graph, r, m)
-    graph
-end
 
-function _I3!(g::EmbeddedGraph, r::Real, m::Int)
+function Step_I3!(g::EmbeddedGraph, r::Real, m::Int)
     for dummy in 1:m
         spatial = weights(g, dense=true)
         A = floyd_warshall_shortest_paths(g, weights(g)).dists
@@ -167,15 +188,16 @@ function _I3!(g::EmbeddedGraph, r::Real, m::Int)
     end
 end
 
-function _G34(g::EmbeddedGraph, i::Int, d_spatial_i, r)
+
+function Step_G34(g::EmbeddedGraph, i::Int, dist_spatial, r)
     V = dijkstra_shortest_paths(g, i).dists
-    V = ((V .+ d_spatial_i) .^ r) ./ d_spatial_i
+    V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
     V[i] = 0
     argmax(V)
 end
 
-function _rand_uniform()
-    2*(0.5-rand())
-end
+rand_uniform_2D(i) = [rand_uniform(i),rand_uniform(i)]
+rand_uniform(i) = 2*(0.5-rand())
+
 
 end # module
