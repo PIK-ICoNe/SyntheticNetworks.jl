@@ -65,13 +65,13 @@ version = "0.7.0"
 
 [[Documenter]]
 deps = ["Base64", "DocStringExtensions", "InteractiveUtils", "LibGit2", "Logging", "Markdown", "Pkg", "REPL", "Random", "Test", "Unicode"]
-git-tree-sha1 = "9f2135e0e7ecb63f9c3ef73ea15a31d8cdb79bb7"
+git-tree-sha1 = "a8c41ba3d0861240dbec942ee1d0f86c57c37c1c"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-version = "0.20.0"
+version = "0.21.5"
 
 [[EmbeddedGraphs]]
 deps = ["Compose", "Distances", "Documenter", "GraphPlot", "LightGraphs", "Parameters", "Random", "SparseArrays", "Test"]
-git-tree-sha1 = "faf2894c7c9bd8944e743ce32b98b45c490bf289"
+git-tree-sha1 = "e8330f26683303d4cdc9532fb41d073f796338df"
 repo-rev = "master"
 repo-url = "../EmbeddedGraphs.jl"
 uuid = "9c1af47c-29f5-11e9-0b47-9f5334384f20"
