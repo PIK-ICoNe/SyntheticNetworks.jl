@@ -109,7 +109,7 @@ function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real;
         i = rand(1:nv(graph))
         dist_spatial = map(j -> euclidean(graph.vertexpos[i],
             graph.vertexpos[j]), 1:nv(graph))
-        l_edge = Step_G34(graph, nv(graph), dist_spatial, r)
+        l_edge = Step_G34(graph, i, dist_spatial, r)
         add_edge!(graph, l_edge, i)
     end
 
@@ -137,7 +137,7 @@ function grow!(graph::EmbeddedGraph, n::Int, n0::Int, p, q, r, s, u; vertex_dens
             """ Find that node j ∈ {1,...,N} for which dist_spatial(x_i,x_j) is
                 minimal and add the link i–j to G."""
             dist_spatial = map(i -> euclidean(graph.vertexpos[nv(graph)], graph.vertexpos[i]), 1:nv(graph))
-            dist_spatial[nv(graph)] = 100. #Inf
+            dist_spatial[nv(graph)] = 100000. #Inf
             min_dist_vertex = argmin(dist_spatial)
             add_edge!(graph, min_dist_vertex, nv(graph))
 
@@ -156,7 +156,7 @@ function grow!(graph::EmbeddedGraph, n::Int, n0::Int, p, q, r, s, u; vertex_dens
             if rand() <= q
                 i = rand(1:nv(graph))
                 dist_spatial = map(j -> euclidean(graph.vertexpos[i], graph.vertexpos[j]), 1:nv(graph))
-                l_edge = Step_G34(graph, nv(graph), dist_spatial, r)
+                l_edge = Step_G34(graph, i, dist_spatial, r)
                 add_edge!(graph, l_edge, i)
             end
 
