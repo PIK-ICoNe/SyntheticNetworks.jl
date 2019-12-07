@@ -94,7 +94,7 @@ function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real;
     """Initialize G to be a minimum spanning tree (MST) for x_1...x_N w.r.t.
         the distance function dist_spatial(x, y) (using Kruskal’s simple or
         Prim’s more efficient algorithm). """
-    mst_graph = EmbeddedGraph(CompleteGraph(n0), positions)
+    mst_graph = EmbeddedGraph(complete_graph(n0), positions)
     edges = prim_mst(mst_graph, weights(mst_graph, dense=true))
     for edge in edges
         add_edge!(graph, edge)
