@@ -95,7 +95,7 @@ function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real;
         the distance function dist_spatial(x, y) (using Kruskal’s simple or
         Prim’s more efficient algorithm). """
     mst_graph = EmbeddedGraph(complete_graph(n0), positions)
-    edges = prim_mst(mst_graph, weights(mst_graph, dense=true))
+    edges = prim_mst(mst_graph.graph, weights(mst_graph, dense=true))
     for edge in edges
         add_edge!(graph, edge)
     end
