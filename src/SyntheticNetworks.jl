@@ -8,6 +8,9 @@ using LightGraphs
 # using SpatialIndexing
 using EmbeddedGraphs
 using Distances
+using MetaGraphs
+import MetaGraph
+include("./Heuristics.jl")
 
 
 """
@@ -71,23 +74,61 @@ struct RandomPowerGrid
     r::Float32
     s::Float32
     u::Float32
+    t_name # Array
+    t_prob::Array{Float32}
+    t_method::Array{Function}  # (graph::EG, vertex::Int) -> candidate::Bool
 end
 
-RandomPowerGrid(n, n0) = RandomPowerGrid(n, n0, rand(5)...)
+RandomPowerGrid(n, n0) = RandomPowerGrid(n, n0, rand(5)..., " ", [1.], [x -> true])
 
 function generate_graph(RPG)
     # (n, n0, p, q, r, s, u) = (RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.s)
-    eg = initialise(RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u)
-    grow!(eg, RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u)
-    eg
+    eg, t_list = initialise(RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u,
+                    RPG.t_name, RPG.t_prob, RPG.t_method)
+    grow!(eg, t_list, RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u,
+          RPG.t_name, RPG.t_prob, RPG.t_method)
+     mg = MetaGraph(eg, t_list)
+     mg
+    # return eg
+end
+# Step IG0
+""" From a list of probabilities of drawing a node type, determines one randomly and
+    returns the index of node type"""
+function draw_type(type_prob::Array{Float32,1})
+    t0 = copy(t_p)
+    pushfirst!(t0 , 0.)
+    type_interval = [sum(t0[1:i+1]) for i in 1:length(t0)-1]
+    typerand = rand()
+    t_n = findfirst(type_interval .>= rand())
+    return t_n
 end
 
-function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real;
+function MetaGraph(eg::EmbeddedGraph, default_weight = 1.)
+    mg = MetaGraph(eg.graph, default_weight)
+    for (i,j) in enumerate(eg.vertexpos)
+        set_prop!(mg,i,:pos,j)
+    end
+    return mg
+end
+
+
+function MetaGraph(eg::EmbeddedGraph, t_arr::Array{String}, default_weight = 1.)
+    mg = MetaGraph(eg.graph, default_weight)
+    for (i,j) in enumerate(eg.vertexpos)
+        set_props!(mg,i,Dict(:pos => j, :type => t_arr[i]))
+    end
+    return mg
+end
+
+
+function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real,
+                    name, prob::Array{Float32}, methods::Array{Function};
                     vertex_density_prob::Function=rand_uniform_2D)
     # STEP I1
     """If the locations x_1...x_N are not given, draw them independently at
         random from ρ."""
     positions = [vertex_density_prob(i) for i=1:n0 ]
+    types = [draw_type(prob) for i = 1:n0]
     graph = EmbeddedGraph(SimpleGraph(n0), positions)
 
     # STEP I2
@@ -109,8 +150,13 @@ function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real;
         i = rand(1:nv(graph))
         dist_spatial = map(j -> euclidean(graph.vertexpos[i],
             graph.vertexpos[j]), 1:nv(graph))
-        l_edge = Step_G34(graph, i, dist_spatial, r)
-        add_edge!(graph, l_edge, i)
+        #
+        l_edge = Step_G34(graph, i, dist_spatial, r, methods[types])
+        if l_edge == 0
+            dummy -= 1
+        else
+            add_edge!(graph, l_edge, i)
+        end
     end
 
     #"""In the new code the logic has changed and this step is equal to step G4.
@@ -119,12 +165,16 @@ function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real;
     #    for which f(i,j,G) [eqn. 1] is maximal, and add the link i–j to G."""
     # Step_I3!(graph, r, m) # OLD LOGIC
 
-    graph
+    return graph, types
 end
 
-function grow!(graph::EmbeddedGraph, n::Int, n0::Int, p, q, r, s, u; vertex_density_prob::Function=rand_uniform_2D)
+function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
+               name, prob::Array{Float32}, methods::Array{Function};
+               vertex_density_prob::Function=rand_uniform_2D)
     for n_actual in n0+1:n
         # STEP G0
+        t = draw_type(prob)
+        push!(types,t)
         """With probabilities 1−s and s, perform either steps G1–G4 or step
         G5, respectively."""
         if rand() >= s
@@ -145,8 +195,14 @@ function grow!(graph::EmbeddedGraph, n::Int, n0::Int, p, q, r, s, u; vertex_dens
             """ With probability p, find that node l ∈ {1,...,N} ⍀ {j} for
                 which f(i,l,G) is maximal, and add the link i–l to G."""
             if rand() <= p
-                l_edge = Step_G34(graph, nv(graph), dist_spatial, r)
+                l_edge = Step_G34(graph, nv(graph), dist_spatial, r, methods[types])
+                if l_edge == 0
+                    n_actual -= 1
+                    continue
+                else
                 add_edge!(graph, l_edge, nv(graph))
+                end
+
             end
             # STEP G4
             """ With probability q, draw a node i' ∈ {1,...,N} uniformly at
@@ -156,8 +212,14 @@ function grow!(graph::EmbeddedGraph, n::Int, n0::Int, p, q, r, s, u; vertex_dens
             if rand() <= q
                 i = rand(1:nv(graph))
                 dist_spatial = map(j -> euclidean(graph.vertexpos[i], graph.vertexpos[j]), 1:nv(graph))
-                l_edge = Step_G34(graph, i, dist_spatial, r)
+                l_edge = Step_G34(graph, i, dist_spatial, r, methods[types])
+                if l_edge == 0
+                    n_actual -= 1
+                    continue
+                else
                 add_edge!(graph, l_edge, i)
+                end
+
             end
 
         else
@@ -189,11 +251,17 @@ function Step_I3!(g::EmbeddedGraph, r::Real, m::Int)
 end
 
 
-function Step_G34(g::EmbeddedGraph, i::Int, dist_spatial, r)
-    V = dijkstra_shortest_paths(g, i).dists
-    V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
-    V[i] = 0
-    argmax(V)
+function Step_G34(g::EmbeddedGraph, i::Int, dist_spatial, r, method_arr::Array{Function,1})
+    candidates = map(x -> method_arr(g, x), 1:nv(g))
+    if sum(candidates) > 0
+        V = dijkstra_shortest_paths(g, i).dists
+        V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
+        V[i] = 0
+        return argmax(V[candidates])
+    else
+        print("no node found")
+        return 0
+    end
 end
 
 rand_uniform_2D(i) = [rand_uniform(i),rand_uniform(i)]
