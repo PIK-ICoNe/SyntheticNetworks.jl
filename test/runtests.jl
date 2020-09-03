@@ -1,5 +1,14 @@
 using SyntheticNetworks, Test
+using EmbeddedGraphs: EmbeddedGraph, nv
+using Random
+Random.seed!(42);
 
-@testset "greet" begin
-    @test greet() == println("Hello World!")
+const RPG = RandomPowerGrid(100, 1)
+const g = generate_graph(RPG)
+
+@testset "RPG" begin
+    @test RPG isa RandomPowerGrid
+    @test g isa EmbeddedGraph
+    @test nv(g) == RPG.n
 end
+

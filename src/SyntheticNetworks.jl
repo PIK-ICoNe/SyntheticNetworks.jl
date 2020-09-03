@@ -131,7 +131,6 @@ function MetaGraph(eg::EmbeddedGraph, default_weight = 1.0)
     return mg
 end
 
-
 function MetaGraph(eg::EmbeddedGraph, t_arr::Array{String}, default_weight = 1.0)
     mg = MetaGraph(eg.graph, default_weight)
     for (i, j) in enumerate(eg.vertexpos)
@@ -139,7 +138,6 @@ function MetaGraph(eg::EmbeddedGraph, t_arr::Array{String}, default_weight = 1.0
     end
     return mg
 end
-
 
 function initialise(
     n0::Int,
@@ -183,7 +181,6 @@ function initialise(
         """With probability q, draw a node i ∈ {1,...,N} uniformly at
             random, find that node l ∈ {1,...,N} which is not yet linked to i and
             for which f (i,l,G) is maximal, and add the link i–l to G."""
-
         m = Int(round(n0 * (1 - s) * (p + q), RoundDown))
         for dummy = 1:m
             i = rand(1:nv(graph))
@@ -229,7 +226,7 @@ function grow!(
         push!(types, t)
         """With probabilities 1−s and s, perform either steps G1–G4 or step
         G5, respectively."""
-        if (rand() >= s) | (ne(graph) == 0)
+        if (rand() >= s) | isempty(edges(graph))
             # STEP G1
             """If x i is not given, draw it at random from ρ."""
             pos = vertex_density_prob(n_actual)
@@ -275,7 +272,6 @@ function grow!(
                 else
                     add_edge!(graph, l_edge, i)
                 end
-
             end
 
         else
