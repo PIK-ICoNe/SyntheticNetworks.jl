@@ -1,5 +1,3 @@
-__precompile__(false)
-
 module SyntheticNetworks
 
 using Random
@@ -21,7 +19,8 @@ include("./Heuristics.jl")
         f(i,j,G) = (d_G(i,j) + 1) ^ r / (dist_spatial(x_i,x_j))
 """
 abstract type SyntheticNetwork end
-export SyntheticNetwork, RandomPowerGrid, initialise, generate_graph, f
+
+export SyntheticNetwork, RandomPowerGrid, initialise, grow!, generate_graph
 
 """
     RandomPowerGrid(num_layers, n, n0, p, q, r, s, u, sampling, α, β, γ, debug)
@@ -78,7 +77,8 @@ struct RandomPowerGrid
     t_prob::Array{Float32}
     t_method::Array{Function}  # (graph::EG, vertex::Int) -> candidate::Bool
 end
-default_method(g::EmbeddedGraph,i::Int32)::Bool = true
+
+default_method(g::EmbeddedGraph,i::Int)::Bool = true
 RandomPowerGrid(n, n0) = RandomPowerGrid(n, n0, rand(5)..., " ", [1.], [default_method])
 
 function generate_graph(RPG)
@@ -177,7 +177,8 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
         push!(types,t)
         """With probabilities 1−s and s, perform either steps G1–G4 or step
         G5, respectively."""
-        if rand() >= s || ne(graph) > 0
+        s_val = rand()
+        if (s_val <= s) || (ne(graph) == 0)
             # STEP G1
             """If x i is not given, draw it at random from ρ."""
             pos = vertex_density_prob(n_actual)
@@ -200,7 +201,7 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
                     n_actual -= 1
                     continue
                 else
-                add_edge!(graph, l_edge, nv(graph))
+                    add_edge!(graph, l_edge, nv(graph))
                 end
 
             end
@@ -212,12 +213,13 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
             if rand() <= q
                 i = rand(1:nv(graph))
                 dist_spatial = map(j -> euclidean(graph.vertexpos[i], graph.vertexpos[j]), 1:nv(graph))
+                dist_spatial[i] = 100000. #Inf 
                 l_edge = Step_G34(graph, i, dist_spatial, r, methods[types])
                 if l_edge == 0
                     n_actual -= 1
                     continue
                 else
-                add_edge!(graph, l_edge, i)
+                    add_edge!(graph, l_edge, i)
                 end
 
             end
