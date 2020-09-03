@@ -124,38 +124,46 @@ end
 function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real,
                     name, prob::Array{Float32}, methods::Array{Function};
                     vertex_density_prob::Function=rand_uniform_2D)
-    # STEP I1
-    """If the locations x_1...x_N are not given, draw them independently at
+
+    # we can skip this when only a single node is given
+    if n0 == 1
+        graph = EmbeddedGraph(complete_graph(n0), vertex_density_prob(n0))
+    else
+        # STEP I1
+        """If the locations x_1...x_N are not given, draw them independently at
         random from ρ."""
-    positions = [vertex_density_prob(i) for i=1:n0 ]
-    types = [draw_type(prob) for i = 1:n0]
-    graph = EmbeddedGraph(SimpleGraph(n0), positions)
 
-    # STEP I2
-    """Initialize G to be a minimum spanning tree (MST) for x_1...x_N w.r.t.
-        the distance function dist_spatial(x, y) (using Kruskal’s simple or
-        Prim’s more efficient algorithm). """
-    mst_graph = EmbeddedGraph(complete_graph(n0), positions)
-    edges = prim_mst(mst_graph.graph, weights(mst_graph, dense=true))
-    for edge in edges
-        add_edge!(graph, edge)
-    end
+        positions = [vertex_density_prob(i) for i=1:n0 ]
+        types = [draw_type(prob) for i = 1:n0]
+        graph = EmbeddedGraph(SimpleGraph(n0), positions)
 
-    # STEP I3
-    """With probability q, draw a node i ∈ {1,...,N} uniformly at
-        random, find that node l ∈ {1,...,N} which is not yet linked to i and
-        for which f (i,l,G) is maximal, and add the link i–l to G."""
-    m = Int(round(n0*(1-s)*(p+q), RoundDown))
-    for dummy in 1:m
-        i = rand(1:nv(graph))
-        dist_spatial = map(j -> euclidean(graph.vertexpos[i],
-            graph.vertexpos[j]), 1:nv(graph))
-        #
-        l_edge = Step_G34(graph, i, dist_spatial, r, methods[types])
-        if l_edge == 0
-            dummy -= 1
-        else
-            add_edge!(graph, l_edge, i)
+        # STEP I2
+        """Initialize G to be a minimum spanning tree (MST) for x_1...x_N w.r.t.
+            the distance function dist_spatial(x, y) (using Kruskal’s simple or
+            Prim’s more efficient algorithm). """
+
+        mst_graph = EmbeddedGraph(complete_graph(n0), positions)
+        edges = prim_mst(mst_graph.graph, weights(mst_graph, dense=true))
+        for edge in edges
+            add_edge!(graph, edge)
+        end
+
+        # STEP I3
+        """With probability q, draw a node i ∈ {1,...,N} uniformly at
+            random, find that node l ∈ {1,...,N} which is not yet linked to i and
+            for which f (i,l,G) is maximal, and add the link i–l to G."""
+
+        m = Int(round(n0*(1-s)*(p+q), RoundDown))
+        for dummy in 1:m
+            i = rand(1:nv(graph))
+            dist_spatial = map(j -> euclidean(graph.vertexpos[i], graph.vertexpos[j]), 1:nv(graph))
+            #
+            l_edge = Step_G34(graph, i, dist_spatial, r, methods[types])
+            if l_edge == 0
+                dummy -= 1
+            else
+                add_edge!(graph, l_edge, i)
+            end
         end
     end
 
