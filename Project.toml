@@ -1,6 +1,6 @@
 name = "SyntheticNetworks"
 uuid = "249d44c8-44e3-11e9-1b59-f5895c860273"
-authors = ["oskarddfa <oskar.pfeffer@gmail.com>"]
+authors = ["oskarddfa <oskar.pfeffer@gmail.com>", "pschultz <pschultz@pik-potsdam.de>"]
 version = "0.1.0"
 
 [deps]
