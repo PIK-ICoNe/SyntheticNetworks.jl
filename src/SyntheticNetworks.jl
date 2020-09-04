@@ -76,9 +76,13 @@ struct RandomPowerGrid
     t_name # Array
     t_prob::Array{Float32}
     t_method::Array{Function}  # (graph::EG, vertex::Int) -> candidate::Bool
+    function RandomPowerGrid(n, n0, p, q, r, s, u, t_name, t_prob, t_method)
+        @warn "The parameter `u` is currently not implemented."
+        new(n, n0, p, q, r, s, u, t_name, t_prob, t_method)
+    end
 end
 
-default_method(g::EmbeddedGraph,i::Int)::Bool = true
+default_method(g::EmbeddedGraph, i::Int)::Bool = true
 RandomPowerGrid(n, n0) = RandomPowerGrid(n, n0, rand(5)..., " ", [1.], [default_method])
 
 function generate_graph(RPG)
@@ -91,6 +95,7 @@ function generate_graph(RPG)
      # mg
     return eg, t_list
 end
+
 # Step IG0
 """ From a list of probabilities of drawing a node type, determines one randomly and
     returns the index of node type"""
@@ -135,7 +140,7 @@ function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real,
     """Initialize G to be a minimum spanning tree (MST) for x_1...x_N w.r.t.
         the distance function dist_spatial(x, y) (using Kruskal’s simple or
         Prim’s more efficient algorithm). """
-    mst_graph = EmbeddedGraph(LightGraphs.CompleteGraph(n0), positions)
+    mst_graph = EmbeddedGraph(complete_graph(n0), positions)
     edges = prim_mst(mst_graph.graph, weights(mst_graph, dense=true))
     for edge in edges
         add_edge!(graph, edge)
@@ -254,7 +259,7 @@ end
 
 
 function Step_G34(g::EmbeddedGraph, i::Int, dist_spatial, r, method_arr::Array{Function,1})
-    candidates = [method_arr[i](g, i) == 1 ? true : false for i in 1:nv(g)]
+    candidates = [method_arr[i](g, i) for i in 1:nv(g)] 
     if true in candidates
         V = dijkstra_shortest_paths(g, i).dists
         V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
