@@ -8,10 +8,9 @@ using LightGraphs
 # using SpatialIndexing
 using EmbeddedGraphs
 using Distances
-# using MetaGraphs
-# import MetaGraph
-include("./Heuristics.jl")
-
+using MetaGraphs
+import MetaGraphs: MetaGraph
+include("Heuristics.jl")
 
 """
     SyntheticNetwork
@@ -21,7 +20,7 @@ include("./Heuristics.jl")
         f(i,j,G) = (d_G(i,j) + 1) ^ r / (dist_spatial(x_i,x_j))
 """
 abstract type SyntheticNetwork end
-export SyntheticNetwork, RandomPowerGrid, initialise, generate_graph, f
+export SyntheticNetwork, RandomPowerGrid, initialise, generate_graph
 
 """
     RandomPowerGrid(num_layers, n, n0, p, q, r, s, u, sampling, α, β, γ, debug)
@@ -78,8 +77,9 @@ struct RandomPowerGrid
     t_prob::Array{Float32}
     t_method::Array{Function}  # (graph::EG, vertex::Int) -> candidate::Bool
 end
-default_method(g::EmbeddedGraph,i::Int32)::Bool = true
+default_method(g::EmbeddedGraph,i::Int64)::Bool = true
 RandomPowerGrid(n, n0) = RandomPowerGrid(n, n0, rand(5)..., " ", [1.], [default_method])
+RandomPowerGrid(n,n0,p,q,r,s,u) = RandomPowerGrid(n,n0,p,q,r,s,u, " ", [1.], [default_method])
 
 function generate_graph(RPG)
     # (n, n0, p, q, r, s, u) = (RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.s)
@@ -87,9 +87,9 @@ function generate_graph(RPG)
                     RPG.t_name, RPG.t_prob, RPG.t_method)
     grow!(eg, t_list, RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u,
           RPG.t_name, RPG.t_prob, RPG.t_method)
-     # mg = MetaGraph(eg, t_list)
-     # mg
-    return eg, t_list
+    mg = Embedded_to_MetaGraph(eg, RPG.t_name[t_list])
+    mg
+    return mg
 end
 # Step IG0
 """ From a list of probabilities of drawing a node type, determines one randomly and
@@ -103,17 +103,9 @@ function draw_type(type_prob::Array{Float32,1})
     return t_n
 end
 
-function MetaGraph(eg::EmbeddedGraph, default_weight = 1.)
-    mg = MetaGraph(eg.graph, default_weight)
-    for (i,j) in enumerate(eg.vertexpos)
-        set_prop!(mg,i,:pos,j)
-    end
-    return mg
-end
 
-
-function MetaGraph(eg::EmbeddedGraph, t_arr::Array{String}, default_weight = 1.)
-    mg = MetaGraph(eg.graph, default_weight)
+function Embedded_to_MetaGraph(eg::EmbeddedGraph, t_arr)
+    mg = MetaGraph(eg.graph,1.)
     for (i,j) in enumerate(eg.vertexpos)
         set_props!(mg,i,Dict(:pos => j, :type => t_arr[i]))
     end
@@ -135,7 +127,7 @@ function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real,
     """Initialize G to be a minimum spanning tree (MST) for x_1...x_N w.r.t.
         the distance function dist_spatial(x, y) (using Kruskal’s simple or
         Prim’s more efficient algorithm). """
-    mst_graph = EmbeddedGraph(LightGraphs.CompleteGraph(n0), positions)
+    mst_graph = EmbeddedGraph(complete_graph(n0), positions)
     edges = prim_mst(mst_graph.graph, weights(mst_graph, dense=true))
     for edge in edges
         add_edge!(graph, edge)
@@ -177,7 +169,7 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
         push!(types,t)
         """With probabilities 1−s and s, perform either steps G1–G4 or step
         G5, respectively."""
-        if rand() >= s || ne(graph) > 0
+        if rand() >= s || ne(graph) == 0
             # STEP G1
             """If x i is not given, draw it at random from ρ."""
             pos = vertex_density_prob(n_actual)
@@ -196,11 +188,8 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
                 which f(i,l,G) is maximal, and add the link i–l to G."""
             if rand() <= p
                 l_edge = Step_G34(graph, nv(graph), dist_spatial, r, methods[types])
-                if l_edge == 0
-                    n_actual -= 1
-                    continue
-                else
-                add_edge!(graph, l_edge, nv(graph))
+                if l_edge !== 0
+                    add_edge!(graph, l_edge, nv(graph))
                 end
 
             end
@@ -213,11 +202,8 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
                 i = rand(1:nv(graph))
                 dist_spatial = map(j -> euclidean(graph.vertexpos[i], graph.vertexpos[j]), 1:nv(graph))
                 l_edge = Step_G34(graph, i, dist_spatial, r, methods[types])
-                if l_edge == 0
-                    n_actual -= 1
-                    continue
-                else
-                add_edge!(graph, l_edge, i)
+                if l_edge !== 0
+                    add_edge!(graph, l_edge, i)
                 end
 
             end
