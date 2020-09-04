@@ -83,16 +83,37 @@ struct RandomPowerGrid
 end
 
 default_method(g::EmbeddedGraph, i::Int)::Bool = true
-RandomPowerGrid(n, n0) = RandomPowerGrid(n, n0, rand(5)..., " ", [1.], [default_method])
+RandomPowerGrid(n, n0) = RandomPowerGrid(n, n0, rand(5)..., " ", [1], [default_method])
 
 function generate_graph(RPG)
     # (n, n0, p, q, r, s, u) = (RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.s)
-    eg, t_list = initialise(RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u,
-                    RPG.t_name, RPG.t_prob, RPG.t_method)
-    grow!(eg, t_list, RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u,
-          RPG.t_name, RPG.t_prob, RPG.t_method)
-     # mg = MetaGraph(eg, t_list)
-     # mg
+    eg, t_list = initialise(
+        RPG.n0,
+        RPG.p,
+        RPG.q,
+        RPG.r,
+        RPG.s,
+        RPG.u,
+        RPG.t_name,
+        RPG.t_prob,
+        RPG.t_method,
+    )
+    grow!(
+        eg,
+        t_list,
+        RPG.n,
+        RPG.n0,
+        RPG.p,
+        RPG.q,
+        RPG.r,
+        RPG.s,
+        RPG.u,
+        RPG.t_name,
+        RPG.t_prob,
+        RPG.t_method,
+    )
+    # mg = MetaGraph(eg, t_list)
+    # mg
     return eg, t_list
 end
 
@@ -101,38 +122,47 @@ end
     returns the index of node type"""
 function draw_type(type_prob::Array{Float32,1})
     t0 = copy(type_prob)
-    pushfirst!(t0 , 0.)
-    type_interval = [sum(t0[1:i+1]) for i in 1:length(t0)-1]
+    pushfirst!(t0, 0.0)
+    type_interval = [sum(t0[1:i+1]) for i = 1:length(t0)-1]
     typerand = rand()
     t_n = findfirst(type_interval .>= rand())
     return t_n
 end
 
-function MetaGraph(eg::EmbeddedGraph, default_weight = 1.)
+function MetaGraph(eg::EmbeddedGraph, default_weight = 1.0)
     mg = MetaGraph(eg.graph, default_weight)
-    for (i,j) in enumerate(eg.vertexpos)
-        set_prop!(mg,i,:pos,j)
+    for (i, j) in enumerate(eg.vertexpos)
+        set_prop!(mg, i, :pos, j)
     end
     return mg
 end
 
 
-function MetaGraph(eg::EmbeddedGraph, t_arr::Array{String}, default_weight = 1.)
+function MetaGraph(eg::EmbeddedGraph, t_arr::Array{String}, default_weight = 1.0)
     mg = MetaGraph(eg.graph, default_weight)
-    for (i,j) in enumerate(eg.vertexpos)
-        set_props!(mg,i,Dict(:pos => j, :type => t_arr[i]))
+    for (i, j) in enumerate(eg.vertexpos)
+        set_props!(mg, i, Dict(:pos => j, :type => t_arr[i]))
     end
     return mg
 end
 
 
-function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real,
-                    name, prob::Array{Float32}, methods::Array{Function};
-                    vertex_density_prob::Function=rand_uniform_2D)
+function initialise(
+    n0::Int,
+    p::Real,
+    q::Real,
+    r::Real,
+    s::Real,
+    u::Real,
+    name,
+    prob::Array{Float32},
+    methods::Array{Function};
+    vertex_density_prob::Function = rand_uniform_2D,
+)
     # STEP I1
     """If the locations x_1...x_N are not given, draw them independently at
         random from ρ."""
-    positions = [vertex_density_prob(i) for i=1:n0 ]
+    positions = [vertex_density_prob(i) for i = 1:n0]
     types = [draw_type(prob) for i = 1:n0]
     graph = EmbeddedGraph(SimpleGraph(n0), positions)
 
@@ -141,7 +171,7 @@ function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real,
         the distance function dist_spatial(x, y) (using Kruskal’s simple or
         Prim’s more efficient algorithm). """
     mst_graph = EmbeddedGraph(complete_graph(n0), positions)
-    edges = prim_mst(mst_graph.graph, weights(mst_graph, dense=true))
+    edges = prim_mst(mst_graph.graph, weights(mst_graph, dense = true))
     for edge in edges
         add_edge!(graph, edge)
     end
@@ -150,11 +180,11 @@ function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real,
     """With probability q, draw a node i ∈ {1,...,N} uniformly at
         random, find that node l ∈ {1,...,N} which is not yet linked to i and
         for which f (i,l,G) is maximal, and add the link i–l to G."""
-    m = Int(round(n0*(1-s)*(p+q), RoundDown))
-    for dummy in 1:m
+    m = Int(round(n0 * (1 - s) * (p + q), RoundDown))
+    for dummy = 1:m
         i = rand(1:nv(graph))
-        dist_spatial = map(j -> euclidean(graph.vertexpos[i],
-            graph.vertexpos[j]), 1:nv(graph))
+        dist_spatial =
+            map(j -> euclidean(graph.vertexpos[i], graph.vertexpos[j]), 1:nv(graph))
         #
         l_edge = Step_G34(graph, i, dist_spatial, r, methods[types])
         if l_edge == 0
@@ -173,13 +203,25 @@ function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real,
     return graph, types
 end
 
-function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
-               name, prob::Array{Float32}, methods::Array{Function};
-               vertex_density_prob::Function=rand_uniform_2D)
-    for n_actual in n0+1:n
+function grow!(
+    graph::EmbeddedGraph,
+    types,
+    n::Int,
+    n0::Int,
+    p,
+    q,
+    r,
+    s,
+    u,
+    name,
+    prob::Array{Float32},
+    methods::Array{Function};
+    vertex_density_prob::Function = rand_uniform_2D,
+)
+    for n_actual = n0+1:n
         # STEP G0
         t = draw_type(prob)
-        push!(types,t)
+        push!(types, t)
         """With probabilities 1−s and s, perform either steps G1–G4 or step
         G5, respectively."""
         s_val = rand()
@@ -192,8 +234,11 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
             # STEP G2
             """ Find that node j ∈ {1,...,N} for which dist_spatial(x_i,x_j) is
                 minimal and add the link i–j to G."""
-            dist_spatial = map(i -> euclidean(graph.vertexpos[nv(graph)], graph.vertexpos[i]), 1:nv(graph))
-            dist_spatial[nv(graph)] = 100000. #Inf
+            dist_spatial = map(
+                i -> euclidean(graph.vertexpos[nv(graph)], graph.vertexpos[i]),
+                1:nv(graph),
+            )
+            dist_spatial[nv(graph)] = 100000.0 #Inf
             min_dist_vertex = argmin(dist_spatial)
             add_edge!(graph, min_dist_vertex, nv(graph))
 
@@ -217,8 +262,9 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
                 to G."""
             if rand() <= q
                 i = rand(1:nv(graph))
-                dist_spatial = map(j -> euclidean(graph.vertexpos[i], graph.vertexpos[j]), 1:nv(graph))
-                dist_spatial[i] = 100000. #Inf 
+                dist_spatial =
+                    map(j -> euclidean(graph.vertexpos[i], graph.vertexpos[j]), 1:nv(graph))
+                dist_spatial[i] = 100000.0 #Inf 
                 l_edge = Step_G34(graph, i, dist_spatial, r, methods[types])
                 if l_edge == 0
                     n_actual -= 1
@@ -237,7 +283,10 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
                 New logic splits the nodes somewhere, not in the middle."""
             edge = rand(edges(graph))
             splitval = rand()
-            newpos = (graph.vertexpos[src(edge)] * splitval + graph.vertexpos[dst(edge)] * (1-splitval))
+            newpos = (
+                graph.vertexpos[src(edge)] * splitval +
+                graph.vertexpos[dst(edge)] * (1 - splitval)
+            )
             add_vertex!(graph, newpos)
             add_edge!(graph, src(edge), nv(graph))
             add_edge!(graph, dst(edge), nv(graph))
@@ -248,18 +297,18 @@ end
 
 
 function Step_I3!(g::EmbeddedGraph, r::Real, m::Int)
-    for dummy in 1:m
-        spatial = weights(g, dense=true)
+    for dummy = 1:m
+        spatial = weights(g, dense = true)
         A = floyd_warshall_shortest_paths(g, weights(g)).dists
         A = ((A .+ spatial) .^ r) ./ spatial
-        map(i -> A[i,i] = 0, 1:size(A)[1])
-        add_edge!(g,Tuple(argmax(A))...)
+        map(i -> A[i, i] = 0, 1:size(A)[1])
+        add_edge!(g, Tuple(argmax(A))...)
     end
 end
 
 
 function Step_G34(g::EmbeddedGraph, i::Int, dist_spatial, r, method_arr::Array{Function,1})
-    candidates = [method_arr[i](g, i) for i in 1:nv(g)] 
+    candidates = [method_arr[i](g, i) for i = 1:nv(g)]
     if true in candidates
         V = dijkstra_shortest_paths(g, i).dists
         V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
@@ -270,8 +319,8 @@ function Step_G34(g::EmbeddedGraph, i::Int, dist_spatial, r, method_arr::Array{F
     end
 end
 
-rand_uniform_2D(i) = [rand_uniform(i),rand_uniform(i)]
-rand_uniform(i) = 2*(0.5-rand())
+rand_uniform_2D(i) = [rand_uniform(i), rand_uniform(i)]
+rand_uniform(i) = 2 * (0.5 - rand())
 
 
 end # module
