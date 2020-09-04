@@ -69,6 +69,10 @@ struct RandomPowerGrid
     r::Float32
     s::Float32
     u::Float32
+    function RandomPowerGrid(n, n0, p, q, r, s, u)
+        @warn "The parameter `u` is currently not implemented."
+        new(n, n0, p, q, r, s, u)
+    end
 end
 
 RandomPowerGrid(n, n0) = RandomPowerGrid(n, n0, rand(5)...)
