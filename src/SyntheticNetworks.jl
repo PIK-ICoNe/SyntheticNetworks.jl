@@ -20,7 +20,8 @@ include("Heuristics.jl")
         f(i,j,G) = (d_G(i,j) + 1) ^ r / (dist_spatial(x_i,x_j))
 """
 abstract type SyntheticNetwork end
-export SyntheticNetwork, RandomPowerGrid, initialise, grow!, generate_graph
+export SyntheticNetwork, RandomPowerGrid, initialise, generate_graph, grow!
+
 
 """
     RandomPowerGrid(num_layers, n, n0, p, q, r, s, u, sampling, α, β, γ, debug)
