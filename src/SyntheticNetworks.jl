@@ -9,7 +9,6 @@ using LightGraphs
 using EmbeddedGraphs
 using Distances
 using MetaGraphs
-import MetaGraphs: MetaGraph
 include("Heuristics.jl")
 
 """
@@ -89,6 +88,7 @@ function generate_graph(RPG)
     grow!(eg, t_list, RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u,
           RPG.t_name, RPG.t_prob, RPG.t_method)
     mg = Embedded_to_MetaGraph(eg, RPG.t_name[t_list])
+    set_prop!(mg,:name,string(RPG.p)*";"*string(RPG.q)*";"*string(RPG.r)*";"*string(RPG.s))
     mg
     return mg
 end
@@ -99,7 +99,6 @@ function draw_type(type_prob::Array{Float32,1})
     t0 = copy(type_prob)
     pushfirst!(t0 , 0.)
     type_interval = [sum(t0[1:i+1]) for i in 1:length(t0)-1]
-    typerand = rand()
     t_n = findfirst(type_interval .>= rand())
     return t_n
 end
