@@ -20,7 +20,7 @@ import Base: getproperty
         f(i,j,G) = (d_G(i,j) + 1) ^ r / (dist_spatial(x_i,x_j))
 """
 abstract type SyntheticNetwork end
-export SyntheticNetwork, RandomPowerGrid, initialise, generate_graph, grow!
+export SyntheticNetwork, NodeType, RandomPowerGrid, initialise, generate_graph, grow!
 
 
 """
@@ -68,10 +68,10 @@ export SyntheticNetwork, RandomPowerGrid, initialise, generate_graph, grow!
 # abstract type NodeType end
 
 struct NodeType
-    name
-    probability
-    neighbor_probability
-    method# (graph::EG, vertex::Int) -> candidate::Bool
+    name::String
+    probability::Float32
+    neighbor_probability::Dict(Symbol,Float32) # Dict(Symbol(NodeType_i.name) => prob)
+    method::Function # (graph::EG, vertex::Int) -> candidate::Bool
 end
 
 struct RandomPowerGrid
@@ -82,11 +82,11 @@ struct RandomPowerGrid
     r::Float32
     s::Float32
     u::Float32
-    types::Array{NodeType}
+    types::Array{NodeType,1}
 end
 
 getproperty(arr::Array{NodeType},attr::Symbol) = map(x -> getproperty(x,attr), arr)
-NodeType() = NodeType("Node", 1., 1., default_method)
+NodeType() = NodeType("Node", 1., Dict(:Node => 1.), default_method)
 default_method(g::EmbeddedGraph,i::Int64)::Bool = true
 RandomPowerGrid(n, n0) = RandomPowerGrid(n, n0, rand(5)...,[NodeType()])
 RandomPowerGrid(n,n0,p,q,r,s,u) = RandomPowerGrid(n,n0,p,q,r,s,u,[NodeType()])
@@ -124,7 +124,7 @@ end
 
 
 function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real,
-                    node_types::Array{NodeTypes};
+                    node_types::Array{NodeType,1};
                     vertex_density_prob::Function=rand_uniform_2D)
     # STEP I1
     """If the locations x_1...x_N are not given, draw them independently at
@@ -190,7 +190,8 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
                 minimal and add the link i–j to G."""
             dist_spatial = map(i -> euclidean(graph.vertexpos[nv(graph)], graph.vertexpos[i]), 1:nv(graph))
             dist_spatial[nv(graph)] = 100000. #Inf
-            min_dist_vertex = argmin(dist_spatial)
+            neigbor_prob = map(x -> x[Symbol(types[i].name)] , types.neighbor_probability)
+            min_dist_vertex = argmin(dist_spatial ./ neighbor_prob)
             add_edge!(graph, min_dist_vertex, nv(graph))
 
             # STEP G3
@@ -253,7 +254,8 @@ function Step_G34(g::EmbeddedGraph, i::Int, dist_spatial, r, types::Array{NodeTy
         V = dijkstra_shortest_paths(g, i).dists
         V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
         V[i] = 0
-        return argmax(V[findall(candidates)])
+        p = map(x -> x[Symbol(types[i].name)] , types.neighbor_probability)
+        return argmax(V[findall(candidates)] .* p)
     else
         return 0
     end
