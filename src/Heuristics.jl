@@ -17,13 +17,3 @@ function maximum_degree(k_max)
     return max_degree
 end
 
-# With probability p1 + threshold, allows the connection of nodes.
-# The idea is to find where V is maximal, and use this function for chosen node
-# If false is returned, set V[j] = 0 and find j' where V is maximal
-# Repeat this for given number of times. If none is found take the first one
-# or draw new position
-function accept_neighbor(neighbor_prob, type, threshold = 0)
-    return rand() <= neighbor_prob[type] + threshold
-end
-
-
