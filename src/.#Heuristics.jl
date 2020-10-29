@@ -1,1 +1,0 @@
-ecek@ece-ThinkPad.2654:1601892162

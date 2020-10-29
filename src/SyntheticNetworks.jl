@@ -2,6 +2,7 @@ __precompile__(false)
 
 module SyntheticNetworks
 
+import StatsBase: countmap, sample
 using Random
 using Parameters
 using LightGraphs
@@ -12,7 +13,6 @@ using MetaGraphs
 include("Heuristics.jl")
 include("NodeTypes.jl")
 
-import Base: getproperty
 """
     SyntheticNetwork
 """
@@ -21,7 +21,8 @@ import Base: getproperty
         f(i,j,G) = (d_G(i,j) + 1) ^ r / (dist_spatial(x_i,x_j))
 """
 abstract type SyntheticNetwork end
-export SyntheticNetwork, NodeType, RandomPowerGrid, initialise, generate_graph, grow!, maximum_value_heuristics, cumulative_distribution_heuristics, maximum_degree
+export SyntheticNetwork, NodeType, RandomPowerGrid, initialise, generate_graph, grow!, maximum_value_heuristics, cumulative_distribution_heuristics, maximum_degree,
+    default_method
 
 
 
@@ -97,7 +98,7 @@ end
 function Embedded_to_MetaGraph(eg::EmbeddedGraph, t_arr)
     mg = MetaGraph(eg.graph,1.)
     for (i,j) in enumerate(eg.vertexpos)
-        set_props!(mg,i,Dict(:pos => j, :type => t_arr[i]))
+        set_props!(mg,i,Dict(:pos => j, :type => t_arr[i].name))
     end
     return mg
 end
@@ -229,7 +230,7 @@ end
 
 function Step_G34(g::EmbeddedGraph, i::Int, dist_spatial, r, types::Array{NodeType})
     candidates = connectable_nodes(g, types, i) .&
-        [types[i].method(g, i) == 1 ? true : false for i in 1:nv(g)]
+        [types[i].method(g, i) for i in 1:nv(g)]
     if true in candidates
         V = dijkstra_shortest_paths(g, i).dists
         V = ((V .+ dist_spatial) .^ r) ./ dist_spatial

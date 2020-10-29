@@ -1,6 +1,3 @@
-export maximum_value_heuristics,
-    cumulative_distribution_heuristics, maximum_degree
-
 function maximum_value_heuristics(f::Function, max_val)
     # h(g,i) = f(g)[i] < max_val
     return (g, i) -> f(g)[i] < max_val
