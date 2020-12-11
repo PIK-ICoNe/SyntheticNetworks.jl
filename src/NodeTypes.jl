@@ -19,21 +19,3 @@ function draw_type(node_types::Array{NodeType,1})
     t_n = findfirst(type_interval .>= rand())
     return node_types[t_n]
 end
-# NodeType(name::String, probability::Float32, n_prob::Dict) = NodeType(name, probability, n_prob, default_method)
-# NodeType(name::String, probability::Float32, method::Function; n_types) = NodeType(name, probability, fill(1., n_types), default_method)
-# default_method(g::EmbeddedGraph,i::Int64)::Bool = true
-
-# Step IG0
-
-# function connectable_nodes(g::EmbeddedGraph, n_types::Array{NodeType,1}, i)
-#     n_prob = map(x -> x.neighbor_probability[Symbol(n_types[i].name)], n_types)
-#     return n_prob .> 0.
-# end
-# function connect_types(g::EmbeddedGraph, n_types::Array{NodeType,1}, i, n)
-#     nodetype_frequency = countmap(n_types)
-#     n_prob = map(x -> x.neighbor_probability, n_types)
-#     weights = n_prob[Symbol(n_types[i].name)] .*
-#         nodetype_frequency[Symbol(n_types[i].name)]
-#     candidates = sample([1:i-1;i+1:nv(g)], deleteat!(weights,i), n)
-#     return [i in candidates for i in 1:nv(g)]
-# end
