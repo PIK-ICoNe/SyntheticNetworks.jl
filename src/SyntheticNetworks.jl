@@ -227,6 +227,7 @@ function Step_G34(g::EmbeddedGraph, i::Int, dist_spatial, r)
     V = dijkstra_shortest_paths(g, i).dists
     V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
     V[i] = 0
+    V[neighbors(g, i)] .= 0
     argmax(V)
 end
 
