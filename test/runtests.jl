@@ -12,3 +12,4 @@ const g = generate_graph(RPG)
     @test nv(g) == RPG.n
 end
 
+
