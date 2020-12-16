@@ -173,20 +173,19 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
             dist_spatial = map(i -> euclidean(graph.vertexpos[nv(graph)], graph.vertexpos[i]), 1:nv(graph))
             dist_spatial[nv(graph)] = 100000. #Inf
             min_dist_vertex = argmin(dist_spatial)
-            if heuristic == :neighbor_probability_simple
-                found = types[min_dist_vertex] !==  types[nv(graph)]
-                while !found
-                    if rand() < 1/2
-                        dist_spatial[min_dist_vertex] = 100000.
-                        min_dist_vertex = argmin(dist_spatial)
-                        found = types[min_dist_vertex] !==  types[nv(graph)]
-                    else
-                        found = true
-                    end
-                end
-            else
+            # if heuristic == :neighbor_probability_simple
+            #     found = types[min_dist_vertex] !==  types[nv(graph)]
+            #     while !found
+            #         if rand() < 1/2
+            #             dist_spatial[min_dist_vertex] = 100000.
+            #             min_dist_vertex = argmin(dist_spatial)
+            #             found = types[min_dist_vertex] !==  types[nv(graph)]
+            #         else
+            #             found = true
+            #         end
+            #     end
+            # end
             add_edge!(graph, min_dist_vertex, nv(graph))
-            end
 
 
             # STEP G3
@@ -270,17 +269,19 @@ function Step_G34_standard(g::EmbeddedGraph, i::Int, dist_spatial, r, types::Arr
     V = dijkstra_shortest_paths(g, i).dists
     V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
     V[i] = 0
+    V[neighbors(g, i)] .= 0
     return argmax(V)
 end
 
 
 function Step_G34_maxdegree(g::EmbeddedGraph, i::Int, dist_spatial, r, types::Array{NodeType})
     d = degree_centrality(g, normalize = false)
-    candidates = [d[i] .<= types[i].method_parameter for i in 1:nv(g)]
+    candidates = [d[i] .< types[i].method_parameter for i in 1:nv(g)]
     if true in candidates
         V = dijkstra_shortest_paths(g, i).dists
         V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
         V[i] = 0
+        V[neighbors(g, i)] .= 0
         return argmax(V[findall(candidates)])
     else
         return 0
@@ -294,6 +295,7 @@ function Step_G34_neighbours(g::EmbeddedGraph, i::Int, dist_spatial, r, types::A
         V = dijkstra_shortest_paths(g, i).dists
         V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
         V[i] = 0
+        V[neighbors(g, i)] .= 0
         return argmax(V[findall(candidates)])
     else
         return 0
@@ -304,6 +306,7 @@ function Step_G34_neighbours_simple(g::EmbeddedGraph, i::Int, dist_spatial, r, t
     V = dijkstra_shortest_paths(g, i).dists
     V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
     V[i] = 0
+    V[neighbors(g, i)] .= 0
     j = argmax(V)
     same = types[i] == types[j]
     while same
@@ -322,11 +325,12 @@ end
 probs(k,p) = exp(p[1] + p[2] * k)
 function Step_G34_degree_cdf(g::EmbeddedGraph, i::Int, dist_spatial, r, types::Array{NodeType})
     d = degree(g)
-    candidates = [rand() <= probs(d[j]+1,types[j].method_parameter) for j in 1:nv(g)]
+    candidates = [rand() <= probs(d[j],types[j].method_parameter) for j in 1:nv(g)]
     if true in candidates
         V = dijkstra_shortest_paths(g, i).dists
         V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
         V[i] = 0
+        V[neighbors(g, i)] .= 0
         return argmax(V[findall(candidates)])
     else
         return 0
