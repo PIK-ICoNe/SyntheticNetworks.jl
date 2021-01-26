@@ -26,7 +26,7 @@ end
 abstract type SyntheticNetwork end
 export SyntheticNetwork, NodeType, RandomPowerGrid, initialise, generate_graph, grow!
 
-
+max_iter = 200
 
 """
     RandomPowerGrid(num_layers, n, n0, p, q, r, s, u, sampling, α, β, γ, debug)
@@ -94,7 +94,7 @@ function generate_graph(RPG)
     eg, t_list = initialise(RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u,
                     RPG.types, RPG.heuristic)
     grow!(eg, t_list, RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u,
-          RPG.types, RPG.heuristic)
+         RPG.types, RPG.heuristic)
     mg = Embedded_to_MetaGraph(eg, t_list)
     set_props!(mg, Dict(:pqrs => [RPG.p, RPG.q, RPG.r, RPG.s], :heuristic => RPG.heuristic))
     mg
@@ -142,9 +142,7 @@ function initialise(n0::Int, p::Real, q::Real, r::Real, s::Real, u::Real,
             graph.vertexpos[j]), 1:nv(graph))
         #
         l_edge = Step_G34(graph, i, dist_spatial, r, types, heuristic)
-        if l_edge == 0
-            dummy -= 1
-        else
+        if l_edge != 0
             add_edge!(graph, l_edge, i)
         end
     end
@@ -178,20 +176,35 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
                 minimal and add the link i–j to G."""
             dist_spatial = map(i -> euclidean(graph.vertexpos[nv(graph)], graph.vertexpos[i]), 1:nv(graph))
             dist_spatial[nv(graph)] = 100000. #Inf
-            min_dist_vertex = argmin(dist_spatial)
-            # if heuristic == :neighbor_probability_simple
-            #     found = types[min_dist_vertex] !==  types[nv(graph)]
-            #     while !found
-            #         if rand() < 1/2
-            #             dist_spatial[min_dist_vertex] = 100000.
-            #             min_dist_vertex = argmin(dist_spatial)
-            #             found = types[min_dist_vertex] !==  types[nv(graph)]
-            #         else
-            #             found = true
-            #         end
-            #     end
-            # end
+            if heuristic == :standard
+                min_dist_vertex = argmin(dist_spatial)
+            elseif heuristic == :neighbor_probability_simple
+                min_dist_vertex = argmin(dist_spatial)
+                found = types[min_dist_vertex] !==  types[nv(graph)]
+                iter1 = 0
+                while !found && iter1 <= max_iter
+                    if rand() < 1/2
+                        dist_spatial[min_dist_vertex] = 100000.
+                        min_dist_vertex = argmin(dist_spatial)
+                        found = types[min_dist_vertex] !==  types[nv(graph)]
+                    else
+                        found = true
+                    end
+                    iter1 += 1
+                end
+            elseif heuristic == :maxdegree
+                d = degree(graph)
+                candidates = [d[i] < types[i].method_parameter for i in 1:nv(graph)]
+                dist_spatial[.!candidates] .= 100000.
+                min_dist_vertex = argmin(dist_spatial)
+            elseif heuristic == :degree_cdf
+                d = degree(graph)
+                candidates = [rand() <= probs(d[j],types[j].method_parameter) for j in 1:nv(graph)]
+                dist_spatial[.!candidates] .= 100000.
+                min_dist_vertex = argmin(dist_spatial)
+            end
             add_edge!(graph, min_dist_vertex, nv(graph))
+
 
 
             # STEP G3
@@ -211,12 +224,18 @@ function grow!(graph::EmbeddedGraph, types, n::Int, n0::Int, p, q, r, s, u,
                 to G."""
             if rand() <= q
                 if heuristic == :degree_cdf
-                    found = false
-                    while !found
-                        i = rand(1:nv(graph))
-                        d = degree(graph, i)
-                        found = rand() <= probs(d+1,types[i].method_parameter)
+                    d = degree(graph)
+                    candidates = [rand() <= probs(d[j],types[j].method_parameter) for j in 1:nv(graph)]
+                    iter2 = 0
+                    while isempty(findall(candidates)) && iter2 <= max_iter
+                        candidates = [rand() <= probs(d[j],types[j].method_parameter) for j in 1:nv(graph)]
+                        iter2 += 1
                     end
+                    i = rand(findall(candidates))
+                elseif heuristic == :maxdegree
+                    d = degree(graph)
+                    candidates = [d[i] < types[i].method_parameter for i in 1:nv(graph)]
+                    i = rand(findall(candidates))
                 else
                     i = rand(1:nv(graph))
                 end
@@ -276,19 +295,22 @@ function Step_G34_standard(g::EmbeddedGraph, i::Int, dist_spatial, r, types::Arr
     V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
     V[i] = 0
     V[neighbors(g, i)] .= 0
-    return argmax(V)
+    m = argmax(V)
+    return maximum(V) > 0. ? m : 0
 end
 
 
 function Step_G34_maxdegree(g::EmbeddedGraph, i::Int, dist_spatial, r, types::Array{NodeType})
     d = degree_centrality(g, normalize = false)
-    candidates = [d[i] .< types[i].method_parameter for i in 1:nv(g)]
+    candidates = [d[i] < types[i].method_parameter for i in 1:nv(g)]
     if true in candidates
         V = dijkstra_shortest_paths(g, i).dists
         V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
         V[i] = 0
         V[neighbors(g, i)] .= 0
-        return argmax(V[findall(candidates)])
+        V[.!candidates] .= 0
+        m = argmax(V)
+        return maximum(V) > 0 ? m : 0
     else
         return 0
     end
@@ -302,7 +324,9 @@ function Step_G34_neighbours(g::EmbeddedGraph, i::Int, dist_spatial, r, types::A
         V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
         V[i] = 0
         V[neighbors(g, i)] .= 0
-        return argmax(V[findall(candidates)])
+        V[.!candidates] .= 0
+        m = argmax(V)
+        return maximum(V) > 0 ? m : 0
     else
         return 0
     end
@@ -313,18 +337,24 @@ function Step_G34_neighbours_simple(g::EmbeddedGraph, i::Int, dist_spatial, r, t
     V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
     V[i] = 0
     V[neighbors(g, i)] .= 0
-    j = argmax(V)
-    same = types[i] == types[j]
-    while same
-        if rand() < 1/2
-            V[j] = 0
-            j = argmax(V)
-            same = types[i] == types[j]
-        else
-            same = false
+    if maximum(V) > 0
+        j = argmax(V)
+        same = types[i] == types[j]
+        iter3 = 0
+        while same && iter3 <= max_iter
+            if rand() < 1/2
+                V[j] = 0
+                j = argmax(V)
+                same = types[i] == types[j]
+            else
+                same = false
+            end
+            iter3 += 1
         end
+        return j
+    else
+        return 0
     end
-    return j
 end
 
 
@@ -337,7 +367,9 @@ function Step_G34_degree_cdf(g::EmbeddedGraph, i::Int, dist_spatial, r, types::A
         V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
         V[i] = 0
         V[neighbors(g, i)] .= 0
-        return argmax(V[findall(candidates)])
+        V[.!candidates] .= 0.
+        m = argmax(V)
+        return maximum(V) > 0 ? m : 0
     else
         return 0
     end
