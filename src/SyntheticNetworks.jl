@@ -6,12 +6,15 @@ import StatsBase: countmap, sample
 using Random
 using Parameters
 using LightGraphs
-# using SpatialIndexing
 using EmbeddedGraphs
 using Distances
 using MetaGraphs
-include("Heuristics.jl")
 include("NodeTypes.jl")
+
+function __init__()
+    @warn "The parameter `u` is currently not implemented."
+end
+
 
 """
     SyntheticNetwork
@@ -77,6 +80,9 @@ struct RandomPowerGrid
     u::Float32
     types::Array{NodeType,1}
     heuristic::Symbol
+    function RandomPowerGrid(n, n0, p, q, r, s, u)
+        new(n, n0, p, q, r, s, u)
+    end
 end
 
 RandomPowerGrid(n, n0) = RandomPowerGrid(n, n0, rand(5)...,[NodeType()], :standard)

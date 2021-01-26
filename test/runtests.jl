@@ -20,4 +20,3 @@ grow!(eg, t_list, RPG.n, RPG.n0, RPG.p, RPG.q, RPG.r, RPG.s, RPG.u, RPG.t_name, 
     @test nv(eg) == RPG.n
 end
 
-# you can plot an EmbeddedGraph with `using EmbeddedGraphs: gplot`.
