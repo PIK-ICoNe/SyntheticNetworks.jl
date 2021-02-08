@@ -234,7 +234,7 @@ function Step_G34(g::EmbeddedGraph, i::Int, dist_spatial, r)
     V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
     V[i] = 0
     V[neighbors(g, i)] .= 0
-    return argmax(V) > 0 ? argmax(V) : 0
+    return maximum(V) > 0 ? argmax(V) : 0
 end
 
 rand_uniform_2D(i) = [rand_uniform(i), rand_uniform(i)]
