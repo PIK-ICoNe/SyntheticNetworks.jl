@@ -126,7 +126,9 @@ function initialise(
             dist_spatial =
                 map(j -> euclidean(graph.vertexpos[i], graph.vertexpos[j]), 1:nv(graph))
             l_edge = Step_G34(graph, i, dist_spatial, r)
-            add_edge!(graph, l_edge, i)
+            if l_edge !== 0
+                add_edge!(graph, l_edge, i)
+            end
         end
     end
 
@@ -176,7 +178,9 @@ function grow!(
                 which f(i,l,G) is maximal, and add the link i–l to G."""
             if rand() <= p
                 l_edge = Step_G34(graph, nv(graph), dist_spatial, r)
-                add_edge!(graph, l_edge, nv(graph))
+                if l_edge !== 0
+                    add_edge!(graph, l_edge, nv(graph))
+                end
             end
             # STEP G4
             """ With probability q, draw a node i' ∈ {1,...,N} uniformly at
@@ -188,7 +192,9 @@ function grow!(
                 dist_spatial =
                     map(j -> euclidean(graph.vertexpos[i], graph.vertexpos[j]), 1:nv(graph))
                 l_edge = Step_G34(graph, i, dist_spatial, r)
-                add_edge!(graph, l_edge, i)
+                if l_edge !== 0
+                    add_edge!(graph, l_edge, i)
+                end
             end
 
         else
@@ -228,7 +234,7 @@ function Step_G34(g::EmbeddedGraph, i::Int, dist_spatial, r)
     V = ((V .+ dist_spatial) .^ r) ./ dist_spatial
     V[i] = 0
     V[neighbors(g, i)] .= 0
-    argmax(V)
+    return maximum(V) > 0 ? argmax(V) : 0
 end
 
 rand_uniform_2D(i) = [rand_uniform(i), rand_uniform(i)]
