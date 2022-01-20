@@ -13,4 +13,4 @@ makedocs(
 # See "Hosting Documentation" and deploydocs() in the Documenter manual
 # for more information.
 
-deploydocs(repo = "github.com/luap-pik/SyntheticNetworks.git")
+deploydocs(repo = "github.com/PIK-ICoNe/SyntheticNetworks.git")

@@ -2,7 +2,7 @@ module SyntheticNetworks
 
 using Random
 using Parameters
-using LightGraphs
+using Graphs
 using EmbeddedGraphs
 using Distances
 
