@@ -1,8 +1,8 @@
 # SyntheticNetworks.jl
 
 
-[![Stable Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://pik-icone.github.io/SyntheticNetworks/stable)
-[![Dev Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://pik-icone.github.io/SyntheticNetworks/dev/)
+[![Stable Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://pik-icone.github.io/SyntheticNetworks.jl/stable)
+[![Dev Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://pik-icone.github.io/SyntheticNetworks.jl/dev/)
 
 Julia implementation of
 
