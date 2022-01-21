@@ -1,7 +1,6 @@
 module SyntheticNetworks
 
 using Random
-using Parameters
 using Graphs
 using EmbeddedGraphs
 using Distances
@@ -11,19 +10,10 @@ function __init__()
 end
 
 
-"""
-    SyntheticNetwork
-"""
-
-"""[1] equation
-        f(i,j,G) = (d_G(i,j) + 1) ^ r / (dist_spatial(x_i,x_j))
-"""
 abstract type SyntheticNetwork end
 export SyntheticNetwork, RandomPowerGrid, initialise, generate_graph, grow!
 
-"""
-    RandomPowerGrid(num_layers, n, n0, p, q, r, s, u, sampling, α, β, γ, debug)
-"""
+# Removed Parameters dependency, hence this code is not functional
 #
 # @with_kw mutable struct RandomPowerGrid <: SyntheticNetwork
 #     # model parameters
@@ -63,7 +53,15 @@ export SyntheticNetwork, RandomPowerGrid, initialise, generate_graph, grow!
 # export RandomPowerGrid
 #
 
+"""
+    RandomPowerGrid(num_layers, n, n0, p, q, r, s, u, sampling, α, β, γ, debug)
 
+Our model uses the following heuristic target function for redundancy/cost optimization when adding individual links:
+
+        f(i,j,G) = (d_G(i,j) + 1) ^ r / (dist_spatial(x_i,x_j))
+
+where d_G(i, j) is the length of a shortest path between nodes i, j in network G. Compare Equation (1) in the paper.
+"""
 struct RandomPowerGrid
     n::Int
     n0::Int
