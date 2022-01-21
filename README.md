@@ -1,8 +1,8 @@
 # SyntheticNetworks.jl
 
-[![Build Status](https://travis-ci.org/luap-pik/SyntheticNetworks.svg?branch=master)](https://travis-ci.org/luap-pik/SyntheticNetworks)
-[![Stable Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://luap-pik.github.io/SyntheticNetworks/stable)
-[![Dev Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://luap-pik.github.io/SyntheticNetworks/dev/)
+
+[![Stable Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://pik-icone.github.io/SyntheticNetworks/stable)
+[![Dev Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://pik-icone.github.io/SyntheticNetworks/dev/)
 
 Julia implementation of
 
@@ -10,7 +10,7 @@ Schultz, Paul, Jobst Heitzig, and Jürgen Kurths. "A random growth model for pow
 
 https://arxiv.org/pdf/1602.02562.pdf
 
-The original Python implementation is [here](https://github.com/PIK-ICoNe/SyntheticNetworks-python)
+The original Python implementation is [here](https://github.com/PIK-ICoNe/SyntheticNetworks-python).
 
 # Citation
 
